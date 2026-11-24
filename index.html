@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pixel Art - Món Quà Bí Mật</title>
+  <title>Pixel Art - Một Ngày Của Mèo Béo</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -15,8 +15,10 @@
       justify-content: center;
       font-family: "Courier New", Courier, monospace;
       color: #ffeaf2;
-      gap: 16px;
+      gap: 14px;
+      padding: 16px;
     }
+
     .frame {
       position: relative;
       padding: 12px;
@@ -25,6 +27,7 @@
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
       overflow: hidden;
     }
+
     canvas {
       display: block;
       width: 512px;
@@ -33,31 +36,31 @@
       image-rendering: crisp-edges;
       background: #fff6f8;
     }
-    .greeting-box {
+
+    .start-overlay {
       position: absolute;
-      top: 20%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.8);
-      width: 82%;
-      text-align: center;
-      padding: 10px 14px;
-      background: rgba(255, 245, 247, 0.95);
-      border: 3px solid #d62839;
-      box-shadow: 0 4px 0 #8a1522;
-      color: #8a1522;
-      font-size: 20px;
+      inset: 12px;
+      background: rgba(31, 26, 36, 0.86);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      cursor: pointer;
+    }
+
+    .start-overlay span {
+      padding: 14px 24px;
+      background: #ff9eb5;
+      color: #2b1a23;
+      font-size: 16px;
       font-weight: bold;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      opacity: 0;
-      pointer-events: none;
-      user-select: none;
-      transition: opacity 0.35s ease, transform 0.35s ease;
+      border: 3px solid #ffeaf2;
+      box-shadow: 0 4px 0 #a34d66;
     }
-    .greeting-box.show {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
+
+    .start-overlay:hover span { background: #ffb7c9; }
+    .start-overlay.hidden { display: none; }
+
     .dev-credit {
       position: absolute;
       right: 20px;
@@ -66,305 +69,842 @@
       font-weight: bold;
       letter-spacing: 0.5px;
       color: #9e7382;
+      background: rgba(255, 250, 252, 0.65);
+      padding: 1px 5px;
       pointer-events: none;
       user-select: none;
     }
+
+    /* Thanh phát nhạc: xếp 2 tầng (Thanh tua ở trên, Đĩa + Nút ở dưới) */
+    .music-bar {
+      width: 544px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px;
+      background: #33293d;
+      border: 4px solid #f7b7cd;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Tầng trên: Thanh tua từng đoạn nhạc */
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .time-text {
+      font-size: 11px;
+      font-weight: bold;
+      color: #f7b7cd;
+      min-width: 34px;
+      text-align: center;
+      user-select: none;
+    }
+
+    .seek-bar {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      height: 8px;
+      background: #1f1a24;
+      border: 2px solid #f7b7cd;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .seek-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 16px;
+      background: #ff9eb5;
+      border: 2px solid #ffeaf2;
+      cursor: pointer;
+    }
+
+    .seek-bar::-moz-range-thumb {
+      width: 14px;
+      height: 16px;
+      background: #ff9eb5;
+      border: 2px solid #ffeaf2;
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    /* Tầng dưới: Đĩa nhạc & Các nút điều khiển */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .disc-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .vinyl-disc {
+      width: 46px;
+      height: 46px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background-color: #18141c;
+      background-image: radial-gradient(circle at center,
+        #ff9eb5 0 10px,
+        #18141c 10px 12px,
+        #2e2636 12px 15px,
+        #18141c 15px 18px,
+        #2e2636 18px 20px,
+        #110e14 20px 23px
+      );
+      background-size: cover;
+      background-position: center;
+      border: 2px solid #ffeaf2;
+      position: relative;
+      animation: spin 3s linear infinite;
+      animation-play-state: paused;
+    }
+
+    .vinyl-disc::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      background: #1f1a24;
+      border: 2px solid #ffeaf2;
+      border-radius: 50%;
+    }
+
+    .vinyl-disc.playing { animation-play-state: running; }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .track-info {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .track-label {
+      font-size: 10px;
+      color: #f7b7cd;
+      text-transform: uppercase;
+    }
+
+    .track-name {
+      font-size: 13px;
+      font-weight: bold;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
     button {
       font-family: inherit;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
-      padding: 8px 18px;
+      padding: 6px 10px;
       background: #ff9eb5;
       color: #2b1a23;
       border: 3px solid #ffeaf2;
       cursor: pointer;
+      transition: transform 0.1s, background 0.15s;
     }
+
     button:hover { background: #ffb7c9; }
+    button:active { transform: translateY(2px); }
+
+    .btn-replay {
+      background: #ffeaf2;
+      border-color: #ff9eb5;
+    }
+
     @media (max-width: 560px) {
       canvas { width: 340px; height: 340px; }
-      .greeting-box { font-size: 14px; padding: 7px 10px; }
+      .music-bar { width: 372px; }
+      .controls-row {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
       .dev-credit { font-size: 9px; right: 18px; bottom: 16px; }
+      .track-name { max-width: 120px; }
+      .btn-group { justify-content: center; }
     }
   </style>
 </head>
 <body>
   <div class="frame">
     <canvas id="scene" width="128" height="128"></canvas>
-    <div id="greeting" class="greeting-box">Fuck you idiot</div>
     <div class="dev-credit">DEV: Anh Nguyen</div>
+    <div id="startOverlay" class="start-overlay"><span>▶ Bắt đầu xem 🐾</span></div>
   </div>
-  <button id="replayBtn">Phát lại</button>
+
+  <!-- Thanh trình phát nhạc -->
+  <div class="music-bar">
+    <!-- Thanh kéo tua từng đoạn nhạc -->
+    <div class="progress-row">
+      <span id="currentTime" class="time-text">0:00</span>
+      <input type="range" id="seekBar" class="seek-bar" min="0" max="100" value="0" step="0.1" />
+      <span id="durationTime" class="time-text">0:00</span>
+    </div>
+
+    <!-- Đĩa nhạc & Nút điều khiển -->
+    <div class="controls-row">
+      <div class="disc-section">
+        <div id="vinylDisc" class="vinyl-disc"></div>
+        <div class="track-info">
+          <span class="track-label">Now Playing</span>
+          <span id="trackName" class="track-name">Bài hát 1</span>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button id="prevBtn" title="Bài trước">⏮</button>
+        <button id="playStopBtn" title="Phát / Dừng">▶ Play</button>
+        <button id="skipBtn" title="Bài tiếp theo">⏭</button>
+        <button id="replayBtn" class="btn-replay" title="Phát lại hoạt ảnh">↻</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="bgMusic"></audio>
 
   <script>
+    // ==========================================
+    // 1. TRÌNH PHÁT NHẠC & THANH TUA
+    // ==========================================
+    const PLAYLIST = [
+      { title: "DOJA", src: "music1.mp3", cover: "cover1.jpg" },
+      { title: "SPRINTER", src: "music2.mp3", cover: "cover2.jpg" },
+      { title: "BAND4BAND", src: "music3.mp3", cover: "cover3.jpg" }
+    ];
+
+    let currentTrackIndex = 0;
+    let isPlaying = false;
+    let isSeeking = false;
+
+    const bgMusic = document.getElementById("bgMusic");
+    const vinylDisc = document.getElementById("vinylDisc");
+    const trackNameEl = document.getElementById("trackName");
+    const prevBtn = document.getElementById("prevBtn");
+    const playStopBtn = document.getElementById("playStopBtn");
+    const skipBtn = document.getElementById("skipBtn");
+    const seekBar = document.getElementById("seekBar");
+    const currentTimeEl = document.getElementById("currentTime");
+    const durationTimeEl = document.getElementById("durationTime");
+    const startOverlay = document.getElementById("startOverlay");
+
+    function formatTime(seconds) {
+      if (!isFinite(seconds) || seconds < 0) return "0:00";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return mins + ":" + (secs < 10 ? "0" : "") + secs;
+    }
+
+    function updateDiscCover(coverUrl) {
+      vinylDisc.style.backgroundImage = coverUrl ? `url('${coverUrl}')` : "";
+    }
+
+    function loadTrack(index) {
+      currentTrackIndex = (index + PLAYLIST.length) % PLAYLIST.length;
+      const track = PLAYLIST[currentTrackIndex];
+      bgMusic.src = track.src;
+      trackNameEl.textContent = track.title;
+      updateDiscCover(track.cover);
+      seekBar.value = 0;
+      currentTimeEl.textContent = "0:00";
+      durationTimeEl.textContent = "0:00";
+    }
+
+    function playMusic() {
+      isPlaying = true;
+      vinylDisc.classList.add("playing");
+      playStopBtn.textContent = "■ Stop";
+      bgMusic.play().catch(() => {});
+    }
+
+    function stopMusic() {
+      isPlaying = false;
+      bgMusic.pause();
+      bgMusic.currentTime = 0;
+      seekBar.value = 0;
+      currentTimeEl.textContent = "0:00";
+      vinylDisc.classList.remove("playing");
+      playStopBtn.textContent = "▶ Play";
+    }
+
+    // Cập nhật tổng thời lượng khi nạp xong file nhạc
+    bgMusic.addEventListener("loadedmetadata", () => {
+      seekBar.max = bgMusic.duration || 0;
+      durationTimeEl.textContent = formatTime(bgMusic.duration);
+    });
+
+    // Thanh tua tự chạy theo nhạc
+    bgMusic.addEventListener("timeupdate", () => {
+      if (!isSeeking && isFinite(bgMusic.duration)) {
+        seekBar.max = bgMusic.duration;
+        seekBar.value = bgMusic.currentTime;
+        currentTimeEl.textContent = formatTime(bgMusic.currentTime);
+        durationTimeEl.textContent = formatTime(bgMusic.duration);
+      }
+    });
+
+    // Kéo thả thanh tua để nhảy đến đoạn nhạc mong muốn
+    seekBar.addEventListener("input", () => {
+      isSeeking = true;
+      currentTimeEl.textContent = formatTime(Number(seekBar.value));
+    });
+
+    seekBar.addEventListener("change", () => {
+      bgMusic.currentTime = Number(seekBar.value);
+      isSeeking = false;
+    });
+
+    bgMusic.addEventListener("ended", () => {
+      loadTrack(currentTrackIndex + 1);
+      playMusic();
+    });
+
+    prevBtn.addEventListener("click", () => {
+      loadTrack(currentTrackIndex - 1);
+      playMusic();
+    });
+
+    playStopBtn.addEventListener("click", () => {
+      if (isPlaying) stopMusic();
+      else playMusic();
+    });
+
+    skipBtn.addEventListener("click", () => {
+      loadTrack(currentTrackIndex + 1);
+      playMusic();
+    });
+
+    loadTrack(0);
+
+    // ==========================================
+    // 2. CÔNG CỤ VẼ PIXEL ART
+    // ==========================================
     const canvas = document.getElementById("scene");
     const ctx = canvas.getContext("2d");
-    const greetingEl = document.getElementById("greeting");
     ctx.imageSmoothingEnabled = false;
 
     const W = 128;
     const H = 128;
 
-    const CAT_PALETTE = {
-      o: "#6e4427", O: "#e89e54", d: "#c4722f", l: "#f7cfa3",
-      w: "#fffaf2", p: "#f29ca8", P: "#d47282", b: "#1a1114", h: "#ffffff"
+    function px(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+    }
+
+    const CAT_THEMES = {
+      orange: {
+        out: "#6b3e22", main: "#f2a452", stripe: "#cc7127", belly: "#fff8eb",
+        earIn: "#f598a6", cheek: "#ffb3c1", eye: "#1a1114", eyeShine: "#ffffff", nose: "#f07c90"
+      },
+      black: {
+        out: "#110e17", main: "#2d2736", stripe: "#1e1a24", belly: "#494154",
+        earIn: "#b87a8c", cheek: "#d97b93", eye: "#ffd452", eyeShine: "#110e17", nose: "#f29ca8"
+      }
     };
 
-    const GIFT_PALETTE = {
-      o: "#4a0810", D: "#7d0e1a", d: "#a81826",
-      R: "#d92130", r: "#ff4757", h: "#ff9aa2", W: "#ffffff"
-    };
+    function drawChubbyCat(cx, cy, opts = {}) {
+      const c = CAT_THEMES[opts.theme || "orange"];
+      const scale = opts.scale || 1;
+      const look = opts.look || 0;
+      const eyes = opts.eyes || "open";
+      const apron = opts.apron || false;
+      const tailWag = opts.tailWag || 0;
+      const sit = opts.sit || false;
 
-    const CAT_BACK_1 = [
-      "....oo............oo....","...oOOo..........oOOo...","...oOdo..........odOo...",
-      "..oOOdOo..oooo..oOdOOo..","..oOOOOoooOddOoooOOOOo..","..oOOOOOOOdOOdOOOOOOOo..",
-      "..oOdOOOOOdOOdOOOOOdOo..","...oOOOOOOdOOdOOOOOOo...","...oOdOOOOOOOOOOOOdOo...",
-      "...oOOOOOOOOOOOOOOOOo...","....oOOOOOOOOOOOOOOo....",".....ooOOOOOOOOOOoo.....",
-      "......oOOdOOOOdOOo......",".....oOOOOdOOdOOOOo.....",".....oOdOOOOOOOOdOo.....",
-      ".....oOOOOOOOOOOOOo.....","....oOOdOOOOOOOOdOOo....","....oOOOOOOOOOOOOOOo....",
-      "....oOOdOOOOOOOOdOOo....","....oOOOOOOOOOOOOOOo....","....oOOOOOOOOOOOOOOo..oo",
-      ".....oOOdOOOOOOdOOo..oOo",".....oOOOOOOOOOOOOo.oOdo",".....oOOOOOOOOOOOOooOOo.",
-      "......oOOOo..oOOOOOOoo..","......oOOOo..oOOOo......","......owwwo..owwwo......",
-      ".......ooo....ooo......."
-    ];
+      ctx.save();
+      ctx.translate(Math.round(cx), Math.round(cy));
+      ctx.scale(scale, scale);
 
-    const CAT_BACK_2 = [
-      "....oo............oo....","...oOOo..........oOOo...","...oOdo..........odOo...",
-      "..oOOdOo..oooo..oOdOOo..","..oOOOOoooOddOoooOOOOo..","..oOOOOOOOdOOdOOOOOOOo..",
-      "..oOdOOOOOdOOdOOOOOdOo..","...oOOOOOOdOOdOOOOOOo...","...oOdOOOOOOOOOOOOdOo...",
-      "...oOOOOOOOOOOOOOOOOo...","....oOOOOOOOOOOOOOOo....",".....ooOOOOOOOOOOoo.....",
-      "......oOOdOOOOdOOo......",".....oOOOOdOOdOOOOo.....",".....oOdOOOOOOOOdOo.....",
-      ".....oOOOOOOOOOOOOo.....","....oOOdOOOOOOOOdOOo....","....oOOOOOOOOOOOOOOo....",
-      "....oOOdOOOOOOOOdOOo....","....oOOOOOOOOOOOOOOo....","oo..oOOOOOOOOOOOOOOo....",
-      "oOo..oOOdOOOOOOdOOo.....","odOo.oOOOOOOOOOOOOo.....",".oOOooOOOOOOOOOOOOo.....",
-      "..ooOOOOOOo..oOOOo......","......oOOOo..oOOOo......","......owwwo..owwwo......",
-      ".......ooo....ooo......."
-    ];
+      const tx = 14 + Math.round(Math.sin(tailWag) * 2);
+      px(tx, 10, 6, 4, c.out);
+      px(tx + 3, 6, 4, 6, c.out);
+      px(tx + 1, 11, 4, 2, c.main);
+      px(tx + 4, 7, 2, 5, c.main);
+      px(tx + 4, 7, 2, 2, c.stripe);
 
-    const CAT_TURN = [
-      ".....oo.........oo......","....oOOo.......oOpo.....","....oOdo......oOpPo.....",
-      "...oOOdOo.ooooOOpPo.....","...oOOOOooOddOOOOOo.....","...oOOOOOOdOOdOOOOOo....",
-      "...oOdOOOOdOOdOOOOOo....","....oOOOOOdOOdOllOOo....","....oOdOOOOOOOOllllo....",
-      "....oOOOOOOOOOllbbho....","....oOOOOOOOOOllbbbo....",".....oOOOOOOOlllbbo.....",
-      "......oOOOOOOllwwpo.....",".....oOOdOOOOlwwww......",".....oOOOOOOOllwwwo.....",
-      ".....oOdOOOOOllwwwo.....","....oOOOOOOOOlwwwOo.....","....oOOdOOOOOlwwwOo.....",
-      "....oOOOOOOOOllwwOo.....","....oOOdOOOOOllwwOo.....",".oo.oOOOOOOOOlwwwOo.....",
-      "oOo..oOOdOOOOlwwwOo.....","odOo.oOOOOOOOlwwwOo.....",".oOOooOOOOOOOOllwOo.....",
-      "..ooOOOOOo...oOOOo......",".....oOOOo...oOOOo......",".....owwwo...owwwo......",
-      "......ooo.....ooo......."
-    ];
+      px(-15, -2, 30, 18, c.out);
+      px(-16, 1, 32, 13, c.out);
+      px(-13, 15, 26, 3, c.out);
 
-    const CAT_FRONT = [
-      "...oo..............oo...","..oOpo............opOo..","..oOpPo..........oPpOo..",
-      ".oOOpPPo..oooo..oPPpOOo.",".oOOppPOooOddOooOPppOOo.",".oOOOOOOOdOOOOdOOOOOOOo.",
-      ".oOdOOOOOdOllOdOOOOOdOo.","..oOOOOOOllOOllOOOOOOo..","..oOdlllllllllllllldOo..",
-      "..oOllbbbhllllbbbhllOo..","..oOllbbbbllllbbbbllOo..","..oOllbbbhllllbbbhllOo..",
-      "..oOlllbbllllllbblllOo..","...oOllllwwppwwllllOo...","...oOlllwwwwwwwwlllOo...",
-      "....oOllwwwwwwwwllOo....",".....ooOllwwwwllOoo.....",".....oOOllwwwwllOOo.....",
-      "....oOdlllwwwwllldOo....","....oOOlllwwwwlllOOo....","....oOdlllwwwwllldOo....",
-      "....oOOlllwwwwlllOOo....","....oOOlllwwwwlllOOo....",".....oOOllwwwwllOOo.....",
-      ".....oOOOo....oOOOo.....",".....oOOOo....oOOOo.....",".....owwwo....owwwo.....",
-      "......ooo......ooo......"
-    ];
+      px(-14, -1, 28, 16, c.main);
+      px(-15, 2, 30, 11, c.main);
+      px(-12, 14, 24, 3, c.main);
 
-    const CAT_SMUG = [
-      "...oo..............oo...","..oOpo............opOo..","..oOpPo..........oPpOo..",
-      ".oOOpPPo..oooo..oPPpOOo.",".oOOppPOooOddOooOPppOOo.",".oOOOOOOOdOOOOdOOOOOOOo.",
-      ".oOdOOOOOdOllOdOOOOOdOo.","..oOOOOOOllOOllOOOOOOo..","..oOdlllllllllllllldOo..",
-      "..oOllooooollooooollOo..","..oOllbbbhllllbbbhllOo..","..oOllbbbbllllbbbbllOo..",
-      "..oOlllbbllllllbblllOo..","...oOllllwwppwwllllOo...","...oOlllwwwwwwwwlllOo...",
-      "....oOllwwwwwwwwllOo....",".....ooOllwwwwllOoo.....",".....oOOllwwwwllOOo.....",
-      "....oOdlllwwwwllldOo....","....oOOlllwwwwlllOOo....","....oOdlllwwwwllldOo....",
-      "....oOOlllwwwwlllOOo....","....oOOlllwwwwlllOOo....",".....oOOllwwwwllOOo.....",
-      ".....oOOOo....oOOOo.....",".....oOOOo....oOOOo.....",".....owwwo....owwwo.....",
-      "......ooo......ooo......"
-    ];
+      px(-9, 2, 18, 13, c.belly);
+      px(-10, 4, 20, 9, c.belly);
 
-    const GIFT_LID = [
-      "......ooo...ooo......",".....orhrororhr......",".....orrrrrorrro.....",
-      "....oorrrhrhrrroo....",".ooooooooooooooooooo.","oDDDDDDDDrrrDDDDDDDDo",
-      "oDddddddDrrrDddddddDo","oDDDDDDDDrrrDDDDDDDDo",".ooooooooooooooooooo."
-    ];
+      px(-14, 4, 4, 2, c.stripe);
+      px(-14, 8, 4, 2, c.stripe);
+      px(10, 4, 4, 2, c.stripe);
+      px(10, 8, 4, 2, c.stripe);
 
-    const GIFT_BASE = [
-      "..oRRRRRRrrrRRRRRRo..","..oRWWWRRrrrRRWWWRo..","..oRRRRWRrrrRRRRWRo..",
-      "..oRRWRRRrrrRRWRRRo..","..oRRRRRRrrrRRRRRRo..","..oRRWRRRrrrRRWRRRo..",
-      "..oRRRRRRrrrRRRRRRo..","..oRWWWRRrrrRRWWWRo..","..oRRRRWRrrrRRRRWRo..",
-      "..oRRWRRRrrrRRWRRRo..","..oRRRRRRrrrRRRRRRo..","..oRRWRRRrrrRRWRRRo..",
-      "..ooooooooooooooooo.."
-    ];
+      if (apron) {
+        px(-10, 0, 20, 15, "#ffffff");
+        px(-9, 1, 18, 13, "#ffe0ea");
+        px(-11, 2, 22, 2, "#ff85a2");
+        px(-6, -2, 2, 4, "#ff85a2");
+        px(4, -2, 2, 4, "#ff85a2");
+        px(-4, 6, 8, 5, "#ffb3c6");
+      }
 
-    const MIDDLE_FINGER = [
-      ".....ooo.....","....owwwo....","....owwwo....","....owwwo....",
-      "....owwwo....","....owwwo....","....owwwo....","..ooowwwooo..",
-      ".owwowwwowwo.",".owwowwwowwo.","oOwwowwwowwOo","oOOwwwwwwwOOo",
-      "oOOlwwwwwlOOo",".oOOlllllOOo.","..oOOOOOOOo..","...oOOOOOo...",
-      "....ooooo...."
-    ];
+      if (!sit) {
+        px(-11, 16, 7, 4, c.out);
+        px(4, 16, 7, 4, c.out);
+        px(-10, 16, 5, 3, c.belly);
+        px(5, 16, 5, 3, c.belly);
+      }
 
-    function drawSprite(sprite, palette, x, y, scale) {
-      const sx = Math.round(x);
-      const sy = Math.round(y);
-      for (let r = 0; r < sprite.length; r++) {
-        const line = sprite[r];
-        for (let c = 0; c < line.length; c++) {
-          const ch = line[c];
-          if (ch !== "." && palette[ch]) {
-            ctx.fillStyle = palette[ch];
-            ctx.fillRect(sx + c * scale, sy + r * scale, scale, scale);
-          }
-        }
+      px(-14, -18, 28, 17, c.out);
+      px(-15, -15, 30, 12, c.out);
+      px(-12, -20, 24, 2, c.out);
+
+      px(-13, -17, 26, 15, c.main);
+      px(-14, -14, 28, 10, c.main);
+      px(-11, -19, 22, 2, c.main);
+
+      px(-13, -24, 7, 6, c.out);
+      px(6, -24, 7, 6, c.out);
+      px(-12, -23, 5, 5, c.main);
+      px(7, -23, 5, 5, c.main);
+      px(-11, -22, 3, 3, c.earIn);
+      px(8, -22, 3, 3, c.earIn);
+
+      px(-4, -19, 2, 4, c.stripe);
+      px(-1, -19, 2, 5, c.stripe);
+      px(2, -19, 2, 4, c.stripe);
+
+      px(-6 + look, -8, 12, 6, c.belly);
+      px(-8 + look, -7, 16, 4, c.belly);
+
+      px(-11 + look, -8, 3, 2, c.cheek);
+      px(8 + look, -8, 3, 2, c.cheek);
+
+      if (eyes === "open") {
+        px(-8 + look, -13, 4, 4, c.eye);
+        px(4 + look, -13, 4, 4, c.eye);
+        px(-7 + look, -12, 1, 1, c.eyeShine);
+        px(5 + look, -12, 1, 1, c.eyeShine);
+      } else if (eyes === "happy") {
+        px(-8 + look, -11, 4, 1, c.out);
+        px(-7 + look, -12, 2, 1, c.out);
+        px(4 + look, -11, 4, 1, c.out);
+        px(5 + look, -12, 2, 1, c.out);
+      } else if (eyes === "sleep") {
+        px(-8 + look, -11, 4, 1, c.out);
+        px(4 + look, -11, 4, 1, c.out);
+      }
+
+      px(-1 + look, -8, 2, 1, c.nose);
+      px(-2 + look, -6, 1, 1, c.out);
+      px(1 + look, -6, 1, 1, c.out);
+      px(-1 + look, -7, 2, 1, c.out);
+
+      ctx.restore();
+    }
+
+    // ==========================================
+    // 3. CÁC CẢNH HOẠT ẢNH (7 CẢNH LẶP LẠI)
+    // ==========================================
+    function drawSceneSweep(t) {
+      px(0, 0, W, 80, "#fff4e6");
+      px(0, 78, W, 3, "#e6ccb2");
+      px(0, 81, W, 47, "#e8c39e");
+      for (let y = 89; y < H; y += 10) px(0, y, W, 1, "#d4a87e");
+
+      px(14, 18, 24, 18, "#8c5a3c");
+      px(16, 20, 20, 14, "#c9ebff");
+      px(16, 28, 20, 6, "#8ac926");
+      px(28, 22, 4, 4, "#ffca3a");
+
+      px(98, 66, 14, 14, "#c96f4b");
+      px(96, 64, 18, 3, "#b05837");
+      px(102, 50, 6, 14, "#4d9e3f");
+      px(96, 54, 7, 6, "#65b84d");
+      px(107, 52, 7, 6, "#65b84d");
+
+      const walkX = Math.sin(t * 2.2) * 8;
+      px(44 + walkX, 96, 36, 5, "#cfa47a");
+
+      const catX = 62 + walkX;
+      const catY = 78 + Math.round(Math.abs(Math.sin(t * 6)) * -1.5);
+      drawChubbyCat(catX, catY, { look: 1, eyes: "happy", tailWag: t * 5 });
+
+      const sweep = Math.sin(t * 7);
+      const broomX = catX + 12 + sweep * 8;
+      const broomTopX = catX + 4 - sweep * 2;
+
+      for (let i = 0; i <= 18; i++) {
+        const bx = broomTopX + ((broomX - broomTopX) * i) / 18;
+        const by = 72 + (i * 25) / 18;
+        px(bx, by, 2, 2, "#8d5524");
+      }
+      px(broomX - 5, 95, 12, 3, "#c68642");
+      px(broomX - 7, 98, 16, 6, "#f2c14e");
+      px(broomX - 6, 102, 2, 3, "#d49a2a");
+      px(broomX - 1, 102, 2, 3, "#d49a2a");
+      px(broomX + 4, 102, 2, 3, "#d49a2a");
+
+      px(catX + 4, catY + 2, 6, 5, "#6b3e22");
+      px(catX + 5, catY + 3, 4, 3, "#fff8eb");
+
+      const dustPhase = (t * 2.5) % 1;
+      px(broomX + 10 + dustPhase * 10, 99 - dustPhase * 8, 3, 3, "#ffffff");
+      px(broomX + 14 + dustPhase * 14, 96 - dustPhase * 5, 2, 2, "#f0e4d7");
+    }
+
+    function drawSceneWipe(t) {
+      px(0, 0, W, 94, "#fceef5");
+      px(0, 94, W, 34, "#e6ccb2");
+
+      px(18, 10, 92, 68, "#7f5539");
+      px(22, 14, 84, 60, "#a8e0ff");
+      px(30, 24, 16, 6, "#ffffff");
+      px(34, 21, 8, 4, "#ffffff");
+      px(78, 30, 18, 6, "#ffffff");
+      px(28, 18, 6, 22, "#d4f1ff");
+      px(36, 18, 3, 14, "#d4f1ff");
+      px(62, 14, 4, 60, "#7f5539");
+      px(22, 42, 84, 4, "#7f5539");
+
+      px(14, 86, 16, 16, "#4ea8de");
+      px(13, 84, 18, 3, "#3a86ff");
+      px(16, 82, 5, 3, "#ffffff");
+      px(22, 81, 4, 3, "#ffffff");
+
+      px(46, 92, 36, 5, "#a47148");
+      px(50, 97, 4, 12, "#8b5a2b");
+      px(74, 97, 4, 12, "#8b5a2b");
+
+      const catX = 64;
+      const catY = 74;
+      drawChubbyCat(catX, catY, { look: 1, eyes: "open", tailWag: t * 4 });
+
+      const wipeX = 78 + Math.cos(t * 7) * 9;
+      const wipeY = 52 + Math.sin(t * 7) * 7;
+
+      px(catX + 10, catY - 4, 6, 8, "#f2a452");
+      px(wipeX - 4, wipeY - 3, 10, 7, "#6b3e22");
+      px(wipeX - 3, wipeY - 2, 8, 5, "#ffe66d");
+      px(wipeX - 1, wipeY - 1, 2, 1, "#ffffff");
+
+      const sp = Math.sin(t * 8);
+      if (sp > 0) {
+        px(36, 30, 5, 1, "#ffffff");
+        px(38, 28, 1, 5, "#ffffff");
+        px(88, 24, 5, 1, "#ffffff");
+        px(90, 22, 1, 5, "#ffffff");
+      } else {
+        px(46, 56, 5, 1, "#ffffff");
+        px(48, 54, 1, 5, "#ffffff");
+      }
+      px(wipeX + 7, wipeY - 6 - ((t * 10) % 8), 3, 3, "#e0f7ff");
+    }
+
+    function drawSceneBadminton(t) {
+      px(0, 0, W, 76, "#74c7fc");
+      px(0, 52, W, 24, "#a6dcff");
+
+      px(100, 10, 14, 14, "#ffe066");
+      px(102, 8, 10, 18, "#ffe066");
+      px(98, 12, 18, 10, "#ffe066");
+      px(102, 12, 10, 10, "#fff3b0");
+
+      const cloudShift = (t * 4) % 140;
+      px(18 + (cloudShift % 30), 14, 18, 6, "#ffffff");
+      px(22 + (cloudShift % 30), 11, 10, 4, "#ffffff");
+      px(56 - (cloudShift % 20), 20, 14, 5, "#ffffff");
+
+      for (let i = 0; i < 24; i++) px(24 - i, 52 + i, i * 2 + 2, 1, "#6c8ebf");
+      for (let i = 0; i < 28; i++) px(76 - i, 48 + i, i * 2 + 2, 1, "#5c7da8");
+      px(74, 48, 6, 4, "#a8c6e8");
+
+      px(0, 76, W, 52, "#76c850");
+      px(0, 76, W, 4, "#5ea83b");
+      px(12, 108, 104, 2, "#ffffff");
+
+      px(4, 54, 6, 26, "#7f4f24");
+      px(0, 38, 16, 20, "#388e3c");
+      px(4, 42, 12, 12, "#4caf50");
+
+      px(118, 56, 6, 24, "#7f4f24");
+      px(112, 40, 16, 18, "#388e3c");
+      px(114, 44, 12, 12, "#4caf50");
+
+      const flowers = [
+        [10, 86, "#ff6b9d"], [22, 114, "#ffd166"], [44, 118, "#ffffff"],
+        [86, 116, "#ff6b9d"], [110, 84, "#ffd166"], [116, 112, "#ffffff"]
+      ];
+      for (const [fx, fy, fc] of flowers) {
+        px(fx, fy, 3, 3, fc);
+        px(fx + 1, fy + 1, 1, 1, "#ffca3a");
+      }
+
+      px(63, 72, 2, 36, "#4a4e69");
+      for (let y = 74; y < 96; y += 4) px(62, y, 4, 1, "#ffffff");
+
+      const cycle = (t % 1.6) / 1.6;
+      const goingRight = cycle < 0.5;
+      const p = goingRight ? cycle * 2 : (cycle - 0.5) * 2;
+      const startX = goingRight ? 36 : 92;
+      const endX = goingRight ? 92 : 36;
+      const shuttleX = startX + (endX - startX) * p;
+      const shuttleY = 74 - Math.sin(p * Math.PI) * 34;
+
+      const leftJump = (!goingRight && p > 0.85) || (goingRight && p < 0.15) ? -4 : 0;
+      const rightJump = (goingRight && p > 0.85) || (!goingRight && p < 0.15) ? -4 : 0;
+
+      drawChubbyCat(28, 92 + leftJump, { theme: "orange", scale: 0.82, look: 1, eyes: "happy", tailWag: t * 6 });
+      const r1Y = 82 + leftJump + (leftJump < 0 ? -5 : 0);
+      px(38, r1Y + 6, 5, 2, "#3a86ff");
+      px(42, r1Y, 6, 8, "#3a86ff");
+      px(43, r1Y + 1, 4, 6, "#e0f2fe");
+
+      drawChubbyCat(100, 92 + rightJump, { theme: "black", scale: 0.82, look: -1, eyes: "open", tailWag: t * 6 + 2 });
+      const r2Y = 82 + rightJump + (rightJump < 0 ? -5 : 0);
+      px(85, r2Y + 6, 5, 2, "#ff595e");
+      px(80, r2Y, 6, 8, "#ff595e");
+      px(81, r2Y + 1, 4, 6, "#ffe5e5");
+
+      px(shuttleX - 2, shuttleY - 2, 4, 4, "#ffffff");
+      px(shuttleX - 1, shuttleY + 1, 2, 2, "#ff595e");
+    }
+
+    function drawSceneCook(t) {
+      px(0, 0, W, 80, "#fff3d6");
+      for (let y = 0; y < 80; y += 12) px(0, y, W, 1, "#f2dfb8");
+      for (let x = 0; x < W; x += 16) px(x, 0, 1, 80, "#f2dfb8");
+
+      px(14, 24, 40, 3, "#a47148");
+      px(18, 14, 7, 10, "#ff6b6b");
+      px(28, 16, 7, 8, "#4ecdc4");
+      px(38, 12, 8, 12, "#ffe66d");
+
+      const bob = Math.round(Math.sin(t * 6) * 1);
+      drawChubbyCat(44, 68 + bob, { look: 1, eyes: "happy", apron: true, tailWag: t * 5 });
+
+      px(0, 82, W, 46, "#d9c2ad");
+      px(0, 80, W, 4, "#8c6d53");
+      px(60, 78, 46, 6, "#4a4e69");
+      const flame = Math.floor(t * 10) % 2;
+      px(72, 76, 22, 3, flame ? "#3a86ff" : "#00bbf9");
+      px(76, 75, 14, 2, "#ff9f1c");
+
+      const panLift = Math.sin(t * 5) > 0.7 ? -2 : 0;
+      px(66, 70 + panLift, 34, 6, "#22223b");
+      px(50, 71 + panLift, 16, 3, "#22223b");
+
+      px(73, 68 + panLift, 18, 3, "#ffffff");
+      px(76, 66 + panLift, 12, 3, "#ffffff");
+      px(79, 65 + panLift, 6, 3, "#ffbe0b");
+      px(80, 65 + panLift, 2, 1, "#fff3b0");
+
+      px(52, 69 + bob, 6, 5, "#6b3e22");
+      px(53, 70 + bob, 4, 3, "#fff8eb");
+
+      for (let i = 0; i < 3; i++) {
+        const sy = 60 - ((t * 12 + i * 9) % 24);
+        const sx = 75 + i * 7 + Math.sin(t * 4 + i) * 2;
+        px(sx, sy, 2, 3, "rgba(255,255,255,0.8)");
       }
     }
 
-    const petalColors = ["#ff9eb5", "#ffb7c5", "#ffc8d6", "#ff85a2"];
-    let petals = [];
+    function drawSceneWashDishes(t) {
+      px(0, 0, W, 80, "#e6f7f5");
+      for (let y = 0; y < 80; y += 12) px(0, y, W, 1, "#ccebe7");
+      for (let x = 0; x < W; x += 16) px(x, 0, 1, 80, "#ccebe7");
 
-    function createPetal(startY) {
-      return {
-        x: Math.random() * W,
-        y: startY,
-        vx: -0.15 + Math.random() * 0.3,
-        vy: 0.25 + Math.random() * 0.35,
-        swayAmp: 0.2 + Math.random() * 0.35,
-        swaySpeed: 0.03 + Math.random() * 0.03,
-        phase: Math.random() * Math.PI * 2,
-        size: Math.random() > 0.5 ? 2 : 1,
-        color: petalColors[Math.floor(Math.random() * petalColors.length)],
-        landed: false,
-        landY: 96 + Math.random() * 24
-      };
-    }
+      px(12, 16, 40, 4, "#94a3b8");
+      px(16, 8, 4, 8, "#ffffff");
+      px(23, 8, 4, 8, "#ffffff");
+      px(30, 8, 4, 8, "#ffffff");
+      px(39, 10, 7, 6, "#ffccd5");
 
-    function initPetals() {
-      petals = [];
-      for (let i = 0; i < 14; i++) petals.push(createPetal(-Math.random() * 70));
-    }
+      const bob = Math.round(Math.sin(t * 5) * 1);
+      drawChubbyCat(44, 68 + bob, { look: 1, eyes: "happy", apron: true, tailWag: t * 4 });
 
-    function updateAndDrawPetals(time) {
-      if (petals.length < 30 && Math.random() < 0.06) petals.push(createPetal(-4));
-      for (const p of petals) {
-        if (!p.landed) {
-          p.y += p.vy;
-          p.x += p.vx + Math.sin(time * p.swaySpeed + p.phase) * p.swayAmp;
-          if (p.y >= p.landY) p.landed = true;
-          if (p.x < -4) p.x = W + 2;
-          if (p.x > W + 4) p.x = -2;
-        }
-        const px = Math.round(p.x);
-        const py = Math.round(p.y);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(px, py, 2, 1);
-        ctx.fillRect(px + 1, py + 1, 2, 1);
-        if (p.size === 2) {
-          ctx.fillStyle = "#ffe6ee";
-          ctx.fillRect(px + 1, py, 1, 1);
-        }
+      px(0, 82, W, 46, "#d9c2ad");
+      px(0, 80, W, 4, "#8c6d53");
+
+      px(56, 76, 46, 10, "#94a3b8");
+      px(59, 78, 40, 6, "#cbd5e1");
+
+      px(92, 56, 4, 20, "#64748b");
+      px(82, 56, 14, 4, "#64748b");
+      px(82, 60, 4, 4, "#64748b");
+
+      const waterShift = Math.floor(t * 14) % 4;
+      px(83, 64, 2, 14, "#60a5fa");
+      px(83, 64 + waterShift, 2, 3, "#dbeafe");
+      px(83, 70 + waterShift, 2, 3, "#dbeafe");
+
+      const scrub = Math.sin(t * 9) * 3;
+      px(66, 67, 14, 12, "#94a3b8");
+      px(67, 68, 12, 10, "#ffffff");
+      px(69, 70, 8, 6, "#f1f5f9");
+
+      px(54, 71 + bob, 6, 5, "#6b3e22");
+      px(55, 72 + bob, 4, 3, "#fff8eb");
+      px(70 + scrub, 70, 7, 5, "#ffe66d");
+
+      px(106, 76, 16, 4, "#ffffff");
+      px(107, 72, 14, 4, "#e2e8f0");
+      px(108, 68, 12, 4, "#ffffff");
+
+      for (let i = 0; i < 4; i++) {
+        const by = 72 - ((t * 14 + i * 8) % 30);
+        const bx = 64 + i * 7 + Math.sin(t * 4 + i) * 3;
+        px(bx, by, 4, 4, "#ffffff");
+        px(bx + 1, by + 1, 2, 2, "#bae6fd");
       }
     }
 
-    function drawBackground() {
-      ctx.fillStyle = "#fff5f7";
-      ctx.fillRect(0, 0, W, 88);
-      ctx.fillStyle = "#ffebf0";
-      ctx.fillRect(0, 74, W, 14);
-      ctx.fillStyle = "#f2d5de";
-      ctx.fillRect(0, 88, W, 2);
-      ctx.fillStyle = "#fdf2e9";
-      ctx.fillRect(0, 90, W, H - 90);
-      ctx.fillStyle = "#f5e4d7";
-      for (let y = 96; y < H; y += 10) ctx.fillRect(0, y, W, 1);
-      ctx.fillStyle = "#e8d3c5";
-      ctx.fillRect(46, 102, 36, 4);
-      ctx.fillRect(49, 101, 30, 6);
+    function drawSceneStudy(t) {
+      px(0, 0, W, 84, "#e8f1f5");
+
+      px(14, 14, 34, 24, "#b08968");
+      px(16, 16, 30, 20, "#ddb892");
+      px(20, 19, 8, 8, "#fff3b0");
+      px(32, 21, 10, 7, "#ffccd5");
+
+      px(94, 16, 16, 16, "#5c677d");
+      px(96, 18, 12, 12, "#ffffff");
+      px(101, 20, 2, 5, "#2b2d42");
+      px(101, 23, 5, 2, "#ef233c");
+
+      const headBob = Math.round(Math.sin(t * 4) * 1);
+      drawChubbyCat(64, 70 + headBob, { look: 0, eyes: "open", sit: true, tailWag: t * 3 });
+
+      px(6, 78, 116, 6, "#a47148");
+      px(12, 84, 104, 44, "#c89f78");
+      px(18, 92, 92, 36, "#b0825a");
+
+      px(18, 74, 12, 4, "#3d405b");
+      px(22, 56, 3, 18, "#3d405b");
+      px(22, 54, 14, 3, "#3d405b");
+      px(30, 56, 12, 6, "#e07a5f");
+      px(28, 62, 20, 16, "rgba(255, 243, 176, 0.35)");
+
+      px(48, 72, 32, 7, "#ffffff");
+      px(63, 72, 2, 7, "#cbd5e1");
+      px(51, 74, 10, 1, "#94a3b8");
+      px(51, 76, 8, 1, "#94a3b8");
+      px(67, 74, 10, 1, "#94a3b8");
+
+      px(92, 72, 20, 6, "#457b9d");
+      px(94, 67, 16, 5, "#e63946");
+      px(96, 63, 14, 4, "#2a9d8f");
+
+      const writeX = 68 + Math.sin(t * 10) * 4;
+      px(writeX, 71, 6, 5, "#6b3e22");
+      px(writeX + 1, 72, 4, 3, "#fff8eb");
+      px(writeX - 2, 69, 2, 6, "#ffb703");
     }
 
-    function easeInOutQuad(t) {
-      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    function drawSceneSleep(t) {
+      px(0, 0, W, 86, "#231942");
+      px(0, 86, W, 42, "#352959");
+
+      px(76, 12, 38, 38, "#5e548e");
+      px(79, 15, 32, 32, "#100c24");
+      px(96, 20, 8, 8, "#ffe66d");
+      px(99, 19, 6, 6, "#100c24");
+      const starBlink = Math.floor(t * 3) % 2;
+      px(84, 22, 2, 2, starBlink ? "#ffffff" : "#9f86c0");
+      px(90, 34, 2, 2, starBlink ? "#9f86c0" : "#ffffff");
+      px(104, 36, 2, 2, "#ffffff");
+
+      px(14, 72, 16, 18, "#4a3b73");
+      px(18, 60, 8, 12, "#ffcdb2");
+      px(14, 54, 16, 12, "rgba(255, 224, 130, 0.2)");
+
+      px(26, 66, 78, 36, "#5c3d2e");
+      px(30, 68, 70, 26, "#f8edeb");
+
+      const breath = Math.sin(t * 2.6) * 1.2;
+      drawChubbyCat(48, 78, { look: 0, eyes: "sleep", sit: true, tailWag: 0 });
+
+      px(30, 78 + breath, 70, 22 - breath, "#e0aaff");
+      px(30, 78 + breath, 70, 4, "#f3d5ff");
+      px(38, 86 + breath, 54, 8, "#c77dff");
+
+      const z1 = (t * 8) % 24;
+      const z2 = ((t * 8) + 12) % 24;
+      drawPixelZ(62 + Math.sin(t * 2) * 2, 54 - z1, "#ffe66d");
+      drawPixelZ(70 + Math.cos(t * 2) * 2, 50 - z2, "#f3d5ff");
     }
 
+    function drawPixelZ(x, y, color) {
+      px(x, y, 5, 1, color);
+      px(x + 3, y + 1, 1, 1, color);
+      px(x + 2, y + 2, 1, 1, color);
+      px(x + 1, y + 3, 1, 1, color);
+      px(x, y + 4, 5, 1, color);
+    }
+
+    // ==========================================
+    // 4. VÒNG LẶP CHIẾU 7 CẢNH LIÊN TỤC
+    // ==========================================
+    const SCENES = [
+      drawSceneSweep,
+      drawSceneWipe,
+      drawSceneBadminton,
+      drawSceneCook,
+      drawSceneWashDishes,
+      drawSceneStudy,
+      drawSceneSleep
+    ];
+
+    const SCENE_DURATION = 4.5;
     let startTime = null;
-    let frameCount = 0;
+    let animationStarted = false;
 
     function render(timestamp) {
       if (!startTime) startTime = timestamp;
       const elapsed = (timestamp - startTime) / 1000;
-      frameCount++;
 
-      // Zoom từ từ trong 4 giây (3.2s -> 7.2s)
-      let zoom = 1;
-      if (elapsed >= 3.2 && elapsed < 7.2) {
-        const zProgress = Math.min((elapsed - 3.2) / 4.0, 1);
-        zoom = 1 + easeInOutQuad(zProgress) * 1.35;
+      const totalCycle = SCENE_DURATION * SCENES.length;
+      const loopTime = elapsed % totalCycle;
+      const sceneIndex = Math.floor(loopTime / SCENE_DURATION);
+      const sceneTime = loopTime % SCENE_DURATION;
+
+      SCENES[sceneIndex](sceneTime);
+
+      let fadeAlpha = 0;
+      if (sceneTime < 0.35) {
+        fadeAlpha = 1 - sceneTime / 0.35;
+      } else if (sceneTime > SCENE_DURATION - 0.35) {
+        fadeAlpha = (sceneTime - (SCENE_DURATION - 0.35)) / 0.35;
       }
-
-      ctx.save();
-      if (zoom > 1) {
-        ctx.translate(W / 2, H / 2);
-        ctx.scale(zoom, zoom);
-        ctx.translate(-64, -86);
-      }
-
-      drawBackground();
-
-      const catScale = 2;
-      const catX = Math.floor((W - 24 * catScale) / 2);
-      const catY = 48;
-
-      if (elapsed < 2.2) {
-        const wag = Math.floor(elapsed * 3.5) % 2 === 0;
-        drawSprite(wag ? CAT_BACK_1 : CAT_BACK_2, CAT_PALETTE, catX, catY, catScale);
-      } else if (elapsed < 3.2) {
-        drawSprite(elapsed < 2.75 ? CAT_TURN : CAT_FRONT, CAT_PALETTE, catX, catY, catScale);
-      } else if (elapsed < 7.2) {
-        drawSprite(CAT_FRONT, CAT_PALETTE, catX, catY, catScale);
-
-        // Hộp quà mở từ từ theo nhịp zoom (4 giây)
-        const openProgress = Math.min((elapsed - 3.2) / 3.8, 1);
-        const shakeX = openProgress < 0.85 ? Math.round(Math.sin(elapsed * 26) * 0.6) : 0;
-        const boxX = 53 + shakeX;
-        const boxY = 82;
-
-        drawSprite(GIFT_BASE, GIFT_PALETTE, boxX, boxY, 1);
-
-        if (openProgress > 0.3) {
-          const glowAlpha = Math.min((openProgress - 0.3) / 0.7, 1);
-          ctx.fillStyle = "rgba(255, 252, 210, " + glowAlpha + ")";
-          ctx.fillRect(boxX + 2, boxY - Math.round(openProgress * 8), 17, Math.round(openProgress * 9) + 2);
-        }
-
-        const lidLift = Math.round(easeInOutQuad(openProgress) * 11);
-        const lidShiftX = Math.round(easeInOutQuad(openProgress) * 3);
-        drawSprite(GIFT_LID, GIFT_PALETTE, boxX + lidShiftX, boxY - 8 - lidLift, 1);
-
-        ctx.fillStyle = CAT_PALETTE.o;
-        ctx.fillRect(boxX - 2, boxY + 5, 5, 5);
-        ctx.fillRect(boxX + 18, boxY + 5, 5, 5);
-        ctx.fillStyle = CAT_PALETTE.w;
-        ctx.fillRect(boxX - 1, boxY + 6, 3, 3);
-        ctx.fillRect(boxX + 19, boxY + 6, 3, 3);
-      } else {
-        const revealBob = Math.round(Math.sin(elapsed * 4) * 0.8);
-        drawSprite(CAT_SMUG, CAT_PALETTE, catX, catY + revealBob, catScale);
-
-        // Giơ tay lệch sang bên trái để nhìn rõ ngón tay giữa trên nền sáng
-        const handScale = 2;
-        const handX = 22;
-        const handY = 68 + revealBob;
-        drawSprite(MIDDLE_FINGER, CAT_PALETTE, handX, handY, handScale);
-
-        if (elapsed > 7.45) greetingEl.classList.add("show");
-      }
-
-      updateAndDrawPetals(frameCount);
-      ctx.restore();
-
-      // Lóe sáng trắng chuyển cảnh (6.75s -> 7.8s)
-      if (elapsed >= 6.75 && elapsed <= 7.8) {
-        let flashAlpha = elapsed < 7.2
-          ? (elapsed - 6.75) / 0.45
-          : 1 - (elapsed - 7.2) / 0.6;
-        flashAlpha = Math.max(0, Math.min(1, flashAlpha));
-        ctx.fillStyle = "rgba(255, 255, 255, " + flashAlpha + ")";
+      if (fadeAlpha > 0) {
+        ctx.fillStyle = "rgba(31, 26, 36, " + fadeAlpha + ")";
         ctx.fillRect(0, 0, W, H);
       }
 
@@ -373,16 +913,25 @@
 
     function restartAnimation() {
       startTime = null;
-      frameCount = 0;
-      greetingEl.classList.remove("show");
-      initPetals();
+      if (!animationStarted) {
+        animationStarted = true;
+        startOverlay.classList.add("hidden");
+        requestAnimationFrame(render);
+      }
     }
 
-    document.getElementById("replayBtn").addEventListener("click", restartAnimation);
-    canvas.addEventListener("click", restartAnimation);
+    startOverlay.addEventListener("click", () => {
+      startOverlay.classList.add("hidden");
+      playMusic();
+      if (!animationStarted) {
+        animationStarted = true;
+        requestAnimationFrame(render);
+      }
+    });
 
-    initPetals();
-    requestAnimationFrame(render);
+    document.getElementById("replayBtn").addEventListener("click", restartAnimation);
+
+    drawSceneSweep(0);
   </script>
 </body>
 </html>
