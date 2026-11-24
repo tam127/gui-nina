@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Art - Mèo Tặng Hoa</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #1f1a24;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: "Courier New", Courier, monospace;
+      color: #ffeaf2;
+      gap: 16px;
+    }
+
+    .frame {
+      position: relative;
+      padding: 12px;
+      background: #33293d;
+      border: 4px solid #f7b7cd;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    canvas {
+      display: block;
+      width: 512px;
+      height: 512px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #fff6f8;
+    }
+
+    /* Dòng chữ chúc buổi trưa ở giữa màn hình */
+    .greeting-box {
+      position: absolute;
+      top: 26%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.85);
+      width: 82%;
+      text-align: center;
+      padding: 10px 14px;
+      background: rgba(255, 250, 252, 0.94);
+      border: 3px solid #f28ba8;
+      box-shadow: 0 4px 0 #d96b8a;
+      color: #5c2c3d;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.4;
+      opacity: 0;
+      pointer-events: none;
+      user-select: none;
+      transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .greeting-box.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .dev-credit {
+      position: absolute;
+      right: 20px;
+      bottom: 18px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      color: #9e7382;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 8px 18px;
+      background: #ff9eb5;
+      color: #2b1a23;
+      border: 3px solid #ffeaf2;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    button:hover {
+      background: #ffb7c9;
+    }
+
+    button:active {
+      transform: translateY(2px);
+    }
+
+    @media (max-width: 560px) {
+      canvas {
+        width: 340px;
+        height: 340px;
+      }
+
+      .greeting-box {
+        font-size: 12px;
+        padding: 7px 10px;
+      }
+
+      .dev-credit {
+        font-size: 9px;
+        right: 18px;
+        bottom: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <canvas id="scene" width="128" height="128"></canvas>
+    <div id="greeting" class="greeting-box">Chúc buổi trưa vui vẻ tốt lành</div>
+    <div class="dev-credit">DEV: Anh Nguyen</div>
+  </div>
+
+  <div class="controls">
+    <button id="replayBtn">Phát lại</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const greetingEl = document.getElementById("greeting");
+    ctx.imageSmoothingEnabled = false;
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const CAT_PALETTE = {
+      o: "#6e4427",
+      O: "#e89e54",
+      d: "#c4722f",
+      l: "#f7cfa3",
+      w: "#fffaf2",
+      p: "#f29ca8",
+      P: "#d47282",
+      b: "#1a1114",
+      h: "#ffffff",
+    };
+
+    const BOUQUET_PALETTE = {
+      B: "#2a96c7",
+      c: "#8ad9f5",
+      C: "#c7f0fc",
+      G: "#556b29",
+      g: "#96bd42",
+      W: "#ffffff",
+      s: "#dce9f0",
+      Y: "#f7d442",
+    };
+
+    const HEART_PALETTE = {
+      r: "#ff5c8a",
+      p: "#ff9eb5",
+      w: "#ffffff",
+    };
+
+    const CAT_BACK_1 = [
+      "....oo............oo....",
+      "...oOOo..........oOOo...",
+      "...oOdo..........odOo...",
+      "..oOOdOo..oooo..oOdOOo..",
+      "..oOOOOoooOddOoooOOOOo..",
+      "..oOOOOOOOdOOdOOOOOOOo..",
+      "..oOdOOOOOdOOdOOOOOdOo..",
+      "...oOOOOOOdOOdOOOOOOo...",
+      "...oOdOOOOOOOOOOOOdOo...",
+      "...oOOOOOOOOOOOOOOOOo...",
+      "....oOOOOOOOOOOOOOOo....",
+      ".....ooOOOOOOOOOOoo.....",
+      "......oOOdOOOOdOOo......",
+      ".....oOOOOdOOdOOOOo.....",
+      ".....oOdOOOOOOOOdOo.....",
+      ".....oOOOOOOOOOOOOo.....",
+      "....oOOdOOOOOOOOdOOo....",
+      "....oOOOOOOOOOOOOOOo....",
+      "....oOOdOOOOOOOOdOOo....",
+      "....oOOOOOOOOOOOOOOo....",
+      "....oOOOOOOOOOOOOOOo..oo",
+      ".....oOOdOOOOOOdOOo..oOo",
+      ".....oOOOOOOOOOOOOo.oOdo",
+      ".....oOOOOOOOOOOOOooOOo.",
+      "......oOOOo..oOOOOOOoo..",
+      "......oOOOo..oOOOo......",
+      "......owwwo..owwwo......",
+      ".......ooo....ooo.......",
+    ];
+
+    const CAT_BACK_2 = [
+      "....oo............oo....",
+      "...oOOo..........oOOo...",
+      "...oOdo..........odOo...",
+      "..oOOdOo..oooo..oOdOOo..",
+      "..oOOOOoooOddOoooOOOOo..",
+      "..oOOOOOOOdOOdOOOOOOOo..",
+      "..oOdOOOOOdOOdOOOOOdOo..",
+      "...oOOOOOOdOOdOOOOOOo...",
+      "...oOdOOOOOOOOOOOOdOo...",
+      "...oOOOOOOOOOOOOOOOOo...",
+      "....oOOOOOOOOOOOOOOo....",
+      ".....ooOOOOOOOOOOoo.....",
+      "......oOOdOOOOdOOo......",
+      ".....oOOOOdOOdOOOOo.....",
+      ".....oOdOOOOOOOOdOo.....",
+      ".....oOOOOOOOOOOOOo.....",
+      "....oOOdOOOOOOOOdOOo....",
+      "....oOOOOOOOOOOOOOOo....",
+      "....oOOdOOOOOOOOdOOo....",
+      "....oOOOOOOOOOOOOOOo....",
+      "oo..oOOOOOOOOOOOOOOo....",
+      "oOo..oOOdOOOOOOdOOo.....",
+      "odOo.oOOOOOOOOOOOOo.....",
+      ".oOOooOOOOOOOOOOOOo.....",
+      "..ooOOOOOOo..oOOOo......",
+      "......oOOOo..oOOOo......",
+      "......owwwo..owwwo......",
+      ".......ooo....ooo.......",
+    ];
+
+    const CAT_TURN = [
+      ".....oo.........oo......",
+      "....oOOo.......oOpo.....",
+      "....oOdo......oOpPo.....",
+      "...oOOdOo.ooooOOpPo.....",
+      "...oOOOOooOddOOOOOo.....",
+      "...oOOOOOOdOOdOOOOOo....",
+      "...oOdOOOOdOOdOOOOOo....",
+      "....oOOOOOdOOdOllOOo....",
+      "....oOdOOOOOOOOllllo....",
+      "....oOOOOOOOOOllbbho....",
+      "....oOOOOOOOOOllbbbo....",
+      ".....oOOOOOOOlllbbo.....",
+      "......oOOOOOOllwwpo.....",
+      ".....oOOdOOOOlwwww......",
+      ".....oOOOOOOOllwwwo.....",
+      ".....oOdOOOOOllwwwo.....",
+      "....oOOOOOOOOlwwwOo.....",
+      "....oOOdOOOOOlwwwOo.....",
+      "....oOOOOOOOOllwwOo.....",
+      "....oOOdOOOOOllwwOo.....",
+      ".oo.oOOOOOOOOlwwwOo.....",
+      "oOo..oOOdOOOOlwwwOo.....",
+      "odOo.oOOOOOOOlwwwOo.....",
+      ".oOOooOOOOOOOOllwOo.....",
+      "..ooOOOOOo...oOOOo......",
+      ".....oOOOo...oOOOo......",
+      ".....owwwo...owwwo......",
+      "......ooo.....ooo.......",
+    ];
+
+    const CAT_FRONT = [
+      "...oo..............oo...",
+      "..oOpo............opOo..",
+      "..oOpPo..........oPpOo..",
+      ".oOOpPPo..oooo..oPPpOOo.",
+      ".oOOppPOooOddOooOPppOOo.",
+      ".oOOOOOOOdOOOOdOOOOOOOo.",
+      ".oOdOOOOOdOllOdOOOOOdOo.",
+      "..oOOOOOOllOOllOOOOOOo..",
+      "..oOdlllllllllllllldOo..",
+      "..oOllbbbhllllbbbhllOo..",
+      "..oOllbbbbllllbbbbllOo..",
+      "..oOllbbbhllllbbbhllOo..",
+      "..oOlllbbllllllbblllOo..",
+      "...oOllllwwppwwllllOo...",
+      "...oOlllwwwwwwwwlllOo...",
+      "....oOllwwwwwwwwllOo....",
+      ".....ooOllwwwwllOoo.....",
+      ".....oOOllwwwwllOOo.....",
+      "....oOdlllwwwwllldOo....",
+      "....oOOlllwwwwlllOOo....",
+      "....oOdlllwwwwllldOo....",
+      "....oOOlllwwwwlllOOo....",
+      "....oOOlllwwwwlllOOo....",
+      ".....oOOllwwwwllOOo.....",
+      ".....oOOOo....oOOOo.....",
+      ".....oOOOo....oOOOo.....",
+      ".....owwwo....owwwo.....",
+      "......ooo......ooo......",
+    ];
+
+    const CAT_FRONT_BLINK = [
+      "...oo..............oo...",
+      "..oOpo............opOo..",
+      "..oOpPo..........oPpOo..",
+      ".oOOpPPo..oooo..oPPpOOo.",
+      ".oOOppPOooOddOooOPppOOo.",
+      ".oOOOOOOOdOOOOdOOOOOOOo.",
+      ".oOdOOOOOdOllOdOOOOOdOo.",
+      "..oOOOOOOllOOllOOOOOOo..",
+      "..oOdlllllllllllllldOo..",
+      "..oOllllllllllllllllOo..",
+      "..oOllooooollooooollOo..",
+      "..oOllllllllllllllllOo..",
+      "..oOllllllllllllllllOo..",
+      "...oOllllwwppwwllllOo...",
+      "...oOlllwwwwwwwwlllOo...",
+      "....oOllwwwwwwwwllOo....",
+      ".....ooOllwwwwllOoo.....",
+      ".....oOOllwwwwllOOo.....",
+      "....oOdlllwwwwllldOo....",
+      "....oOOlllwwwwlllOOo....",
+      "....oOdlllwwwwllldOo....",
+      "....oOOlllwwwwlllOOo....",
+      "....oOOlllwwwwlllOOo....",
+      ".....oOOllwwwwllOOo.....",
+      ".....oOOOo....oOOOo.....",
+      ".....oOOOo....oOOOo.....",
+      ".....owwwo....owwwo.....",
+      "......ooo......ooo......",
+    ];
+
+    const BOUQUET = [
+      "............GG.......",
+      ".....GG....GWWG......",
+      "....GWWG..GWWBG......",
+      "...BBGGBBBBGcBB......",
+      "..BccGWWcGGWWccB.....",
+      ".BccGWWYWGWWYWGcB....",
+      ".BcGWWsWGGWsWWGcB....",
+      "BccGWWGGWWGGWWGccB...",
+      "BcGWWYGWYYWGWYWGGcB..",
+      "BcGWWWGWWWWGWWWGccB..",
+      "BccgGGWWGGWWGGggccB..",
+      ".BccggGWWYWGgggccB...",
+      ".BcccggGWWGggccccB...",
+      "..BcccggGGggccccB....",
+      "...BccccGGcccccB.....",
+      "....BccccCccccB......",
+      ".....BccCCCccB.......",
+      "......BBBBBBB........",
+      ".....BWWBWBWWB.......",
+      ".....BCWBcBWCB.......",
+      "......BBcCcBB........",
+      ".......BcCcB.........",
+      ".......BcCcB.........",
+      "......BccCccB........",
+      ".......BBBBB.........",
+    ];
+
+    const HEART = [
+      ".rr.rr.",
+      "rpwrrpr",
+      "rppprpr",
+      ".rpppr.",
+      "..rpr..",
+      "...r...",
+    ];
+
+    function drawSprite(sprite, palette, x, y, scale = 1) {
+      const startX = Math.round(x);
+      const startY = Math.round(y);
+      for (let row = 0; row < sprite.length; row++) {
+        const line = sprite[row];
+        for (let col = 0; col < line.length; col++) {
+          const ch = line[col];
+          if (ch !== "." && palette[ch]) {
+            ctx.fillStyle = palette[ch];
+            ctx.fillRect(startX + col * scale, startY + row * scale, scale, scale);
+          }
+        }
+      }
+    }
+
+    const petalColors = ["#ff9eb5", "#ffb7c5", "#ffc8d6", "#ff85a2"];
+    let petals = [];
+
+    function createPetal(startY = -6) {
+      return {
+        x: Math.random() * W,
+        y: startY,
+        vx: -0.15 + Math.random() * 0.3,
+        vy: 0.25 + Math.random() * 0.35,
+        swayAmp: 0.2 + Math.random() * 0.35,
+        swaySpeed: 0.03 + Math.random() * 0.03,
+        phase: Math.random() * Math.PI * 2,
+        size: Math.random() > 0.5 ? 2 : 1,
+        color: petalColors[Math.floor(Math.random() * petalColors.length)],
+        landed: false,
+        landY: 96 + Math.random() * 24,
+      };
+    }
+
+    function initPetals() {
+      petals = [];
+      for (let i = 0; i < 14; i++) {
+        petals.push(createPetal(-Math.random() * 70));
+      }
+    }
+
+    function updateAndDrawPetals(time) {
+      if (petals.length < 30 && Math.random() < 0.06) {
+        petals.push(createPetal(-4));
+      }
+
+      for (const p of petals) {
+        if (!p.landed) {
+          p.y += p.vy;
+          p.x += p.vx + Math.sin(time * p.swaySpeed + p.phase) * p.swayAmp;
+
+          if (p.y >= p.landY) {
+            p.landed = true;
+          }
+          if (p.x < -4) p.x = W + 2;
+          if (p.x > W + 4) p.x = -2;
+        }
+
+        const px = Math.round(p.x);
+        const py = Math.round(p.y);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(px, py, 2, 1);
+        ctx.fillRect(px + 1, py + 1, 2, 1);
+        if (p.size === 2) {
+          ctx.fillStyle = "#ffe6ee";
+          ctx.fillRect(px + 1, py, 1, 1);
+        }
+      }
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = "#fff5f7";
+      ctx.fillRect(0, 0, W, 88);
+
+      ctx.fillStyle = "#ffebf0";
+      ctx.fillRect(0, 74, W, 14);
+
+      ctx.fillStyle = "#f2d5de";
+      ctx.fillRect(0, 88, W, 2);
+
+      ctx.fillStyle = "#fdf2e9";
+      ctx.fillRect(0, 90, W, H - 90);
+
+      ctx.fillStyle = "#f5e4d7";
+      for (let y = 96; y < H; y += 10) {
+        ctx.fillRect(0, y, W, 1);
+      }
+
+      ctx.fillStyle = "#e8d3c5";
+      ctx.fillRect(46, 102, 36, 4);
+      ctx.fillRect(49, 101, 30, 6);
+    }
+
+    function drawSparkles(t, cx, cy) {
+      const points = [
+        { dx: -16, dy: -12, offset: 0 },
+        { dx: 18, dy: -8, offset: 1.5 },
+        { dx: -14, dy: 12, offset: 3.0 },
+        { dx: 17, dy: 10, offset: 4.5 },
+      ];
+
+      for (const pt of points) {
+        const pulse = Math.sin(t * 0.12 + pt.offset);
+        if (pulse > 0.1) {
+          const sx = Math.round(cx + pt.dx);
+          const sy = Math.round(cy + pt.dy);
+          ctx.fillStyle = "#fff6a8";
+          ctx.fillRect(sx, sy, 1, 1);
+          if (pulse > 0.55) {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(sx - 1, sy, 3, 1);
+            ctx.fillRect(sx, sy - 1, 1, 3);
+          }
+        }
+      }
+    }
+
+    let startTime = null;
+    let frameCount = 0;
+
+    function easeOutBack(t) {
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+
+    function render(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = (timestamp - startTime) / 1000;
+      frameCount++;
+
+      drawBackground();
+
+      const catScale = 2;
+      const catX = Math.floor((W - 24 * catScale) / 2);
+      const idleBob = elapsed > 4.2 ? Math.round(Math.sin(elapsed * 3) * 0.7) : 0;
+      const catY = 48 + idleBob;
+
+      if (elapsed < 2.3) {
+        const wag = Math.floor(elapsed * 3.5) % 2 === 0;
+        drawSprite(wag ? CAT_BACK_1 : CAT_BACK_2, CAT_PALETTE, catX, catY, catScale);
+      } else if (elapsed < 3.3) {
+        if (elapsed < 2.85) {
+          drawSprite(CAT_TURN, CAT_PALETTE, catX, catY, catScale);
+        } else {
+          drawSprite(CAT_FRONT, CAT_PALETTE, catX, catY, catScale);
+        }
+      } else {
+        const blinkCycle = elapsed % 3.6;
+        const isBlinking = blinkCycle > 3.42 && blinkCycle < 3.56;
+        drawSprite(
+          isBlinking ? CAT_FRONT_BLINK : CAT_FRONT,
+          CAT_PALETTE,
+          catX,
+          catY,
+          catScale
+        );
+
+        const offerProgress = Math.min((elapsed - 3.3) / 1.1, 1);
+        const eased = easeOutBack(offerProgress);
+
+        const bouquetY = Math.round(86 - eased * 13) + idleBob;
+        const bouquetX = Math.round(53 + Math.sin(elapsed * 2.5) * 0.5);
+
+        drawSprite(BOUQUET, BOUQUET_PALETTE, bouquetX, bouquetY, 1);
+
+        if (offerProgress > 0.35) {
+          ctx.fillStyle = CAT_PALETTE.o;
+          ctx.fillRect(bouquetX - 2, bouquetY + 14, 5, 5);
+          ctx.fillRect(bouquetX + 18, bouquetY + 14, 5, 5);
+          ctx.fillStyle = CAT_PALETTE.w;
+          ctx.fillRect(bouquetX - 1, bouquetY + 15, 3, 3);
+          ctx.fillRect(bouquetX + 19, bouquetY + 15, 3, 3);
+        }
+
+        // Hiện dòng chữ khi mèo bắt đầu giơ bó hoa ra
+        if (offerProgress >= 0.55) {
+          greetingEl.classList.add("show");
+        }
+
+        if (offerProgress >= 0.85) {
+          drawSparkles(frameCount, bouquetX + 10, bouquetY + 10);
+
+          const heartTime = (elapsed - 4.2) % 2.4;
+          if (elapsed > 4.2) {
+            const heartY = 40 - heartTime * 7;
+            const heartX = 60 + Math.sin(heartTime * 4) * 3;
+            drawSprite(HEART, HEART_PALETTE, heartX, heartY, 1);
+          }
+        }
+      }
+
+      updateAndDrawPetals(frameCount);
+
+      requestAnimationFrame(render);
+    }
+
+    function restartAnimation() {
+      startTime = null;
+      frameCount = 0;
+      greetingEl.classList.remove("show");
+      initPetals();
+    }
+
+    document.getElementById("replayBtn").addEventListener("click", restartAnimation);
+    canvas.addEventListener("click", restartAnimation);
+
+    initPetals();
+    requestAnimationFrame(render);
+  </script>
+</body>
+</html>
